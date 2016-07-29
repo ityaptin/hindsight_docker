@@ -199,17 +199,33 @@ function samples_to_heka_messages(payload, timestamp)
     return 0
 end
 
+function safe_logged_call(func, arg)
+    local ok, result = pcall(func, arg)
+    if not ok then
+        err_msg.Payload = result
+        pcall(inject_message, err_msg)
+        return ok, nil
+    end
+    return ok, result
+end
+
 function process_message()
+    local ok = 0
+    local message_body = nil
     while true do
         local message, topic, partition, key = consumer:receive()
         if message then
-            message = cjson.decode(message)
-            local message_body = message.message
-            if message_body and message_body.payload then
-                local payload = message_body.payload
-                samples_to_heka_messages(payload, message_body.timestamp)
+            ok, message = safe_logged_call(cjson.decode, message)
+            if ok then
+              ok, message_body = safe_logged_call(cjson.decode, message['oslo.message'])
+              if ok and message_body and message_body.payload then
+                  samples_to_heka_messages(message_body.payload, message_body.timestamp)
+              end
             end
         end
+      err = 0
+      message_body = nil
     end
     return 0 -- unreachable but here for consistency
 end
+

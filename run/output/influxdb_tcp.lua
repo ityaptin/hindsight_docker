@@ -11,13 +11,15 @@ local flush  = require 'io'.flush
 
 local influxdb_host = read_config('host') or error('influxdb host is required')
 local influxdb_port = read_config('port') or error('influxdb port is required')
+local username = read_config('username') or error('influxdb username is required')
+local password = read_config('password') or error('influxdb password is required')
 
 local batch_max_lines = read_config('batch_max_lines') or 1000
 assert(batch_max_lines > 0, 'batch_max_lines must be greater than zero')
 
 local db = read_config("database") or error("database config is required")
 
-local write_url = string.format('http://%s:%d/write?db=%s', influxdb_host, influxdb_port, db)
+local write_url = string.format('http://%s:%d/write?db=%s&u=%s&p=%s', influxdb_host, influxdb_port, db, username, password)
 local query_url = string.format('http://%s:%s/query', influxdb_host, influxdb_port)
 
 local database_created = false
@@ -49,7 +51,7 @@ end
 
 local function create_database()
     -- query won't fail if database already exists
-    local body = string.format('q=CREATE DATABASE %s', db)
+    local body = string.format('&u=%s&p=%s&q=CREATE DATABASE %s', username, password, db)
     local resp_body, resp_status = http.request(query_url, body)
     if resp_body and resp_status == 200 then
         -- success
@@ -92,3 +94,4 @@ function timer_event(ns)
         end
     end
 end
+

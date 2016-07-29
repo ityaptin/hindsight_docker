@@ -6,7 +6,9 @@ MAINTAINER it
 #
 #
 RUN cd /tmp \
-    && apt-get install --no-install-recommends -y python-dev \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates git gcc g++ make cmake patch python-dev curl\
     && git clone https://github.com/edenhill/librdkafka.git \
     && cd librdkafka \
     && ./configure \
