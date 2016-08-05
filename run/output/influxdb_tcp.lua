@@ -32,6 +32,8 @@ local lines_count = 0
 local function write_batch()
     local body = table.concat(data) .. "\n"
     local resp_body, resp_status = http.request(write_url, body)
+    write(resp_body, " : ", resp_status, "\n")
+    flush()
     if resp_body and resp_status == 204 then
         -- success
         data = {}

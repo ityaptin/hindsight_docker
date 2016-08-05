@@ -31,10 +31,25 @@ topic_conf = {
 }
 ```
 --]]
+require "string"
+require "cjson"
+require 'table'
+require 'math'
+
+
+local patt = require 'patterns'
+local utils = require 'lma_utils'
+local l = require 'lpeg'
+l.locale(l)
+
+
 local brokerlist    = read_config("brokerlist") or error("brokerlist must be set")
 local topics        = read_config("topics") or error("topics must be set")
 local consumer_conf = read_config("consumer_conf") or {}
 local topic_conf    = read_config("topic_conf")
+
+local write  = require "io".write
+local flush  = require "io".flush
 
 consumer_conf = {
     ["group.id"] = "test_group", -- must always be provided (a single consumer is considered a group of one
@@ -56,15 +71,6 @@ local msg = {
     Fields = {}
 }
 
-require "string"
-require "cjson"
-require 'table'
-require 'math'
-
-local patt = require 'patterns'
-local utils = require 'lma_utils'
-local l = require 'lpeg'
-l.locale(l)
 
 function normalize_uuid(uuid)
    return patt.Uuid:match(uuid)
@@ -113,6 +119,9 @@ function inject_metadata(metadata, tags)
    for _, field in ipairs(metadata_fields) do
        value = get_field(field, metadata)
        if value ~= nil and type(value) ~= 'table' then
+           if type(value) == 'string' then
+               value = string.gsub(value, '.domain.tld', '')
+           end
            tags["metadata." .. field] = value
        end
    end
@@ -159,7 +168,9 @@ function add_sample_to_payload(sample, payload)
        user_id = sample.user_id,
        source = sample.source
    }
--- inject_metadata(sample.resource_metadata or {}, tags)
+   write("Metadata ", cjson.encode(sample.resource_metadata or {}), "\n")
+   flush()
+   inject_metadata(sample.resource_metadata or {}, tags)
    sample_data["tags"] = tags
    table.insert(payload, sample_data)
 end
@@ -215,6 +226,7 @@ function process_message()
     while true do
         local message, topic, partition, key = consumer:receive()
         if message then
+
             ok, message = safe_logged_call(cjson.decode, message)
             if ok then
               ok, message_body = safe_logged_call(cjson.decode, message['oslo.message'])
@@ -228,4 +240,5 @@ function process_message()
     end
     return 0 -- unreachable but here for consistency
 end
+
 
