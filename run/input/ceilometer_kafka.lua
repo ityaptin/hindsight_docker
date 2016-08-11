@@ -35,7 +35,7 @@ require "string"
 require "cjson"
 require 'table'
 require 'math'
-
+require 'os'
 
 local patt = require 'patterns'
 local utils = require 'lma_utils'
@@ -148,6 +148,8 @@ end
 
 
 function add_sample_to_payload(sample, payload)
+   local ts = patt.Timestamp:match(sample.timestamp)
+   local curr_ts = os.time() * 1000000000
    local sample_data = {
        name='sample',
        timestamp = patt.Timestamp:match(sample.timestamp),
@@ -158,7 +160,8 @@ function add_sample_to_payload(sample, payload)
            timestamp = sample.timestamp,
            message_signature = sample.signature,
            type = sample.counter_type,
-           unit = sample.counter_unit
+           unit = sample.counter_unit,
+           delta = curr_ts - ts
        }
    }
    local tags = {
@@ -168,8 +171,6 @@ function add_sample_to_payload(sample, payload)
        user_id = sample.user_id,
        source = sample.source
    }
-   write("Metadata ", cjson.encode(sample.resource_metadata or {}), "\n")
-   flush()
    inject_metadata(sample.resource_metadata or {}, tags)
    sample_data["tags"] = tags
    table.insert(payload, sample_data)
